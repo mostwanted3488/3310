@@ -1,0 +1,64 @@
+name: Build 3310
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  dsp-test:
+    name: DSP test (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and run the offline DSP test
+        run: |
+          g++ -O2 -std=c++17 -Wall -Wextra -ISource/Dsp tests/dsp_test.cpp -o dsp_test
+          mkdir -p test_out
+          ./dsp_test test_out
+      - name: Demo renders (synthetic voice through every mode)
+        uses: actions/upload-artifact@v4
+        with:
+          name: 3310-dsp-demo-wavs
+          path: test_out/*.wav
+
+  windows:
+    name: Windows (VST3 + Standalone)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build --config Release --target N3310_VST3 N3310_Standalone --parallel
+      - name: Stage files
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp -R "build/N3310_artefacts/Release/VST3/3310.vst3" dist/
+          cp "build/N3310_artefacts/Release/Standalone/3310.exe" dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 3310-windows
+          path: dist
+
+  macos:
+    name: macOS (VST3 + AU + Standalone, universal)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build --config Release --target N3310_VST3 N3310_AU N3310_Standalone --parallel
+      - name: Stage files
+        run: |
+          mkdir -p dist
+          ditto "build/N3310_artefacts/Release/VST3/3310.vst3" "dist/3310.vst3"
+          ditto "build/N3310_artefacts/Release/AU/3310.component" "dist/3310.component"
+          ditto "build/N3310_artefacts/Release/Standalone/3310.app" "dist/3310.app"
+          cd dist && zip -r -y ../3310-macos.zip .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 3310-macos
+          path: 3310-macos.zip
