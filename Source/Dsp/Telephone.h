@@ -94,46 +94,46 @@ private:
         switch (mode_)
         {
             case 1:
-                hissDb_ = -66.0f; trim_ = dbToGain (5.5f);
+                hissDb_ = -66.0f; trim_ = dbToGain (7.6f);
                 agc_.set (fs, -30.0f, 2.2f, 4.0f, 140.0f, 3.0f); agcOn_ = true;
                 break;
             case 2:
-                hissDb_ = -62.0f; trim_ = dbToGain (-1.0f);
+                hissDb_ = -62.0f; trim_ = dbToGain (0.5f);
                 break;
             case 3:
-                hpF = 150.0f; lpF = 3500.0f; trim_ = dbToGain (1.0f);
+                hpF = 150.0f; lpF = 3500.0f; trim_ = dbToGain (4.5f);
                 post_.lowpass (fs, 3500.0, 0.7071);
                 break;
             case 4:
-                hpF = 250.0f; lpF = 3000.0f; trim_ = dbToGain (0.8f);
+                hpF = 250.0f; lpF = 3000.0f; trim_ = dbToGain (4.8f);
                 post_.lowpass (fs, 2300.0, 0.7071);
                 hissDb_ = -50.0f;
                 break;
             case 5:
-                hpF = 500.0f; lpF = 2600.0f; trim_ = dbToGain (2.3f);
+                hpF = 500.0f; lpF = 2600.0f; trim_ = dbToGain (4.6f);
                 agc_.set (fs, -36.0f, 10.0f, 1.5f, 80.0f, 16.0f);
                 noiseBp_.bandpass (fs, 2000.0, 0.8);
                 hissDb_ = -50.0f;
                 break;
             case 6:
-                hpF = 300.0f; lpF = 3000.0f; trim_ = dbToGain (0.6f);
+                hpF = 300.0f; lpF = 3000.0f; trim_ = dbToGain (1.9f);
                 up16_.lowpass (2.0 * fs, 3800.0);
                 dn16_.lowpass (2.0 * fs, 3100.0);
                 post_.lowpass (fs, 3100.0, 0.7071);
                 hissDb_ = -62.0f;
                 break;
             case 7:
-                hpF = 350.0f; lpF = 3000.0f; trim_ = dbToGain (7.0f);
+                hpF = 350.0f; lpF = 3000.0f; trim_ = dbToGain (10.3f);
                 agc_.set (fs, -34.0f, 3.0f, 2.0f, 60.0f, 5.0f); agcOn_ = true;
                 hissDb_ = -50.0f;
                 break;
             case 8:
-                hpF = 250.0f; lpF = 3400.0f; trim_ = dbToGain (-0.8f);
+                hpF = 250.0f; lpF = 3400.0f; trim_ = dbToGain (2.2f);
                 post_.lowpass (fs, 3000.0, 0.7071);
                 hissDb_ = -56.0f;
                 break;
             case 9:
-                hpF = 200.0f; lpF = 3600.0f; trim_ = dbToGain (-3.5f);
+                hpF = 200.0f; lpF = 3600.0f; trim_ = dbToGain (0.0f);
                 hissDb_ = -64.0f;
                 break;
             default: break;
@@ -210,7 +210,11 @@ private:
                         for (int i = 0; i < 13; ++i)
                             rx.pulse[s][i] *= sc;
                     }
-                    burst_ = 0.03f;
+                    // digital noise burst on a lost frame: only audible when there is a signal
+                    float act = 0.0f;
+                    for (int n = 0; n < kFrame; ++n)
+                        act += frameIn_[n] * frameIn_[n];
+                    burst_ = act > 1.0e-6f * (float) kFrame ? 0.03f : 0.0f;
                 }
                 else
                 {
@@ -400,8 +404,8 @@ private:
         burst_ *= 0.996f;
         if (burst_ > 0.0005f)
             y += noiseBp_.process (rng_.gauss()) * burst_;
-        if (rng_.uni() < 0.0006f)
-            crack_ = rng_.bi() * 0.25f;
+        if (rng_.uni() < 0.00015f)
+            crack_ = rng_.bi() * 0.12f;
         crack_ *= 0.5f;
         return addHiss (y + crack_);
     }

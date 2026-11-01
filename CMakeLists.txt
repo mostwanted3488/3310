@@ -88,4 +88,11 @@ if(N3310_BUILD_TESTS)
   target_include_directories(N3310Test PRIVATE Source Source/Dsp)
   target_compile_definitions(N3310Test PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_STANDALONE_APPLICATION=1 JUCE_MODAL_LOOPS_PERMITTED=1)
   target_link_libraries(N3310Test PRIVATE N3310Assets juce::juce_audio_utils juce::juce_recommended_config_flags)
+
+  # loads the built 3310.vst3 like a DAW would (needs the N3310_VST3 target built first)
+  juce_add_console_app(N3310HostTest PRODUCT_NAME "N3310HostTest")
+  target_sources(N3310HostTest PRIVATE tests/vst3_load_test.cpp)
+  target_compile_definitions(N3310HostTest PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_STANDALONE_APPLICATION=1
+                             JUCE_PLUGINHOST_VST3=1 JUCE_MODAL_LOOPS_PERMITTED=1)
+  target_link_libraries(N3310HostTest PRIVATE juce::juce_audio_utils juce::juce_recommended_config_flags)
 endif()

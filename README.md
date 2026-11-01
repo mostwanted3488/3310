@@ -51,6 +51,7 @@ JUCE 8.0.15 est téléchargé automatiquement. Le VST3 se trouve ensuite dans `b
 ## Tests
 
 - `tests/dsp_test.cpp` : test hors ligne du moteur audio (sans JUCE), rendu de tous les modes sur une voix de synthèse, niveaux, stabilité, latence. Lancé automatiquement par la CI.
+- `tests/vst3_load_test.cpp` : charge le vrai fichier `3310.vst3` comme un DAW (instanciation, latence, paramètres, traitement de chaque mode, état, éditeur). Option `-DN3310_BUILD_TESTS=ON`, cible `N3310HostTest`.
 - `tests/plugin_test.cpp` : test headless du vrai plugin (chemin audio, bypass, sauvegarde d'état, clics sur les touches, captures de l'interface). Option `-DN3310_BUILD_TESTS=ON`.
 
 ## Structure
