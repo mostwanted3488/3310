@@ -43,6 +43,7 @@ private:
 
     n3310::Engine engine_;
     std::atomic<float>* modeParam_ = nullptr;
+    std::atomic<float>* mixParam_ = nullptr;
     double sampleRate_ = 0.0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (N3310Processor)

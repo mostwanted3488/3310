@@ -86,6 +86,35 @@ int main (int argc, char** argv)
         if (err > 1.0e-4) ++failures;
     }
 
+    // ---- mix: 0% = dry (delayed by the latency), 50% = in between
+    {
+        N3310Processor p4;
+        p4.setPlayConfigDetails (2, 2, fs, 512);
+        p4.prepareToPlay (fs, 512);
+        setMode (p4, 1);
+        auto* mp = p4.apvts.getParameter ("mix");
+        mp->setValueNotifyingHost (mp->convertTo0to1 (0.0f));
+        const int lat = p4.getLatencySamples();
+        std::vector<float> in, res;
+        for (int b = 0; b < 200; ++b)
+        {
+            juce::AudioBuffer<float> buf (2, 512);
+            for (int i = 0; i < 512; ++i)
+            {
+                const float s = 0.4f * std::sin ((float) (b * 512 + i) * 0.031f);
+                buf.setSample (0, i, s); buf.setSample (1, i, s); in.push_back (s);
+            }
+            juce::MidiBuffer midi;
+            p4.processBlock (buf, midi);
+            for (int i = 0; i < 512; ++i) res.push_back (buf.getSample (0, i));
+        }
+        double err = 0.0;
+        for (size_t i = 20000; i < res.size(); ++i)
+            err = std::max (err, (double) std::fabs (res[i] - in[i - (size_t) lat]));
+        std::printf ("mix 0%% max error vs delayed input: %.6f %s\n", err, err < 1.0e-4 ? "ok" : "BAD");
+        if (err > 1.0e-4) ++failures;
+    }
+
     // ---- state round trip
     {
         setMode (proc, 6);
@@ -113,6 +142,41 @@ int main (int argc, char** argv)
             fos.truncate();
             png.writeImageToStream (img, fos);
         }
+        // soft keys: right = mix up, left = mix down
+        {
+            setMode (proc, 3);
+            auto* mp = proc.apvts.getParameter ("mix");
+            mp->setValueNotifyingHost (mp->convertTo0to1 (0.5f));
+            juce::MessageManager::getInstance()->runDispatchLoopUntil (500);
+            auto clickAt = [&] (float dx, float dy)
+            {
+                const juce::Point<float> pos (dx, dy);
+                ed->mouseDown (juce::MouseEvent (juce::Desktop::getInstance().getMainMouseSource(), pos, juce::ModifierKeys(), 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+                                                 ed.get(), ed.get(), juce::Time::getCurrentTime(), pos, juce::Time::getCurrentTime(), 1, false));
+                ed->mouseUp (juce::MouseEvent (juce::Desktop::getInstance().getMainMouseSource(), pos, juce::ModifierKeys(), 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+                                               ed.get(), ed.get(), juce::Time::getCurrentTime(), pos, juce::Time::getCurrentTime(), 1, false));
+                juce::MessageManager::getInstance()->runDispatchLoopUntil (100);
+            };
+            clickAt (330.0f, 622.0f); // right soft key
+            float mx = proc.apvts.getRawParameterValue ("mix")->load();
+            std::printf ("right soft key -> mix %.2f %s\n", mx, std::fabs (mx - 0.6f) < 0.01f ? "ok" : "BAD");
+            if (std::fabs (mx - 0.6f) > 0.01f) ++failures;
+            {
+                auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
+                juce::PNGImageFormat png;
+                juce::FileOutputStream fos (out.getChildFile ("ui_mix.png"));
+                fos.setPosition (0); fos.truncate();
+                png.writeImageToStream (img, fos);
+            }
+            clickAt (140.0f, 610.0f); // left soft key
+            clickAt (140.0f, 610.0f);
+            mx = proc.apvts.getRawParameterValue ("mix")->load();
+            std::printf ("left soft key x2 -> mix %.2f %s\n", mx, std::fabs (mx - 0.4f) < 0.01f ? "ok" : "BAD");
+            if (std::fabs (mx - 0.4f) > 0.01f) ++failures;
+            mp->setValueNotifyingHost (mp->convertTo0to1 (1.0f));
+            juce::MessageManager::getInstance()->runDispatchLoopUntil (100);
+        }
+
         // click on key "5" and on key "0" through the real mouse path
         setMode (proc, 1);
         juce::MessageManager::getInstance()->runDispatchLoopUntil (100);

@@ -50,6 +50,8 @@ inline const unsigned char* glyph (char c)
         { 0x11, 0x11, 0x0A, 0x04, 0x04, 0x04, 0x04 }, // Y
         { 0x1F, 0x01, 0x02, 0x04, 0x08, 0x10, 0x1F }  // Z
     };
+    static const unsigned char percent[7] = { 0x19, 0x19, 0x02, 0x04, 0x08, 0x13, 0x13 };
+    if (c == '%') return percent;
     if (c >= '0' && c <= '9') return digits[c - '0'];
     if (c >= 'A' && c <= 'Z') return letters[c - 'A'];
     if (c >= 'a' && c <= 'z') return letters[c - 'a'];

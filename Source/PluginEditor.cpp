@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 #include "BinaryData.h"
+#include <string>
 
 namespace
 {
@@ -16,6 +17,22 @@ const struct { char c; float x, y, w, h, r; } kKeyData[12] = {
     { '7', 96.1f, 818.8f, 80.5f, 41.0f, 19.9f },  { '8', 213.4f, 835.0f, 83.4f, 41.7f, 0.9f },  { '9', 330.9f, 819.5f, 80.7f, 42.1f, -17.5f },
     { '*', 100.3f, 889.5f, 80.0f, 40.5f, 19.5f }, { '0', 213.5f, 906.2f, 83.1f, 41.4f, 1.2f },  { '#', 326.5f, 890.4f, 80.6f, 41.7f, -17.6f }
 };
+
+// The two soft keys (polygons in padded-photo coordinates): left = mix down, right = mix up
+const std::vector<juce::Point<float>> kSoftL { { 102, 580 }, { 119, 572 }, { 177, 602 }, { 178, 614 }, { 149, 647 }, { 110, 618 }, { 100, 592 } };
+const std::vector<juce::Point<float>> kSoftR { { 362, 570 }, { 380, 573 }, { 391, 586 }, { 386, 605 }, { 345, 648 },
+                                               { 295, 674 }, { 280, 672 }, { 270, 640 }, { 269, 617 }, { 300, 603 } };
+
+juce::Path softPath (int which)
+{
+    const auto& v = which == 0 ? kSoftL : kSoftR;
+    juce::Path p;
+    p.startNewSubPath (v[0]);
+    for (size_t i = 1; i < v.size(); ++i)
+        p.lineTo (v[i]);
+    p.closeSubPath();
+    return p.createPathWithRoundedCorners (6.0f);
+}
 
 const char* const kLcdNames[10] = { "", "1 CALL", "2 STUTTER", "3 AM RADIO", "4 LOW BATT",
                                     "5 WALKIE", "6 SCRAMBLE", "7 BAD LINE", "8 CORRUPT", "9 ROBOT" };
@@ -35,7 +52,15 @@ N3310Editor::N3310Editor (N3310Processor& p)
                                processor_.lastActiveMode.store (mode_);
                            frame_ = 0;
                            repaint();
-                       })
+                       }),
+      mixAttachment_ (*p.apvts.getParameter ("mix"),
+                      [this] (float v)
+                      {
+                          mix_ = v;
+                          if (ready_)
+                              mixShowMs_ = 1800;
+                          repaint();
+                      })
 {
     phone_ = juce::ImageCache::getFromMemory (BinaryData::phone_png, BinaryData::phone_pngSize);
 
@@ -45,6 +70,8 @@ N3310Editor::N3310Editor (N3310Processor& p)
     setSize (368, (int) std::lround (368.0 * kDesignH / kDesignW));
 
     modeAttachment_.sendInitialUpdate();
+    mixAttachment_.sendInitialUpdate();
+    ready_ = true;
     lcdOn_ = mode_ == 0 ? 0.0f : 1.0f;
     startTimer (33);
 }
@@ -98,7 +125,14 @@ int N3310Editor::keyAt (juce::Point<float> d) const
 // -------------------------------------------------------------------- input
 void N3310Editor::mouseDown (const juce::MouseEvent& e)
 {
-    const int k = keyAt (toDesign (e.position));
+    const auto d = toDesign (e.position);
+    for (int which = 0; which < 2; ++which)
+        if (softPath (which).contains (d))
+        {
+            pressSoftKey (which);
+            return;
+        }
+    const int k = keyAt (d);
     if (k >= 0)
         pressKey (k);
 }
@@ -107,6 +141,28 @@ void N3310Editor::mouseUp (const juce::MouseEvent&)
 {
     pressedKey_ = -1;
     repaint();
+}
+
+void N3310Editor::mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails& w)
+{
+    if (w.deltaY != 0.0f)
+        setMix (juce::jlimit (0.0f, 1.0f, std::round ((mix_ + (w.deltaY > 0.0f ? 0.05f : -0.05f)) * 20.0f) / 20.0f));
+}
+
+void N3310Editor::setMix (float mix)
+{
+    mixShowMs_ = 1800;
+    mixAttachment_.beginGesture();
+    mixAttachment_.setValueAsPartOfGesture (mix);
+    mixAttachment_.endGesture();
+    repaint();
+}
+
+void N3310Editor::pressSoftKey (int which)
+{
+    pressedKey_ = 12 + which;
+    pressedMs_ = 0;
+    setMix (juce::jlimit (0.0f, 1.0f, std::round ((mix_ + (which == 0 ? -0.1f : 0.1f)) * 10.0f) / 10.0f));
 }
 
 void N3310Editor::setMode (int mode)
@@ -152,6 +208,12 @@ void N3310Editor::timerCallback()
     {
         const float step = 33.0f / 220.0f;
         lcdOn_ = target > lcdOn_ ? juce::jmin (target, lcdOn_ + step) : juce::jmax (target, lcdOn_ - step);
+        dirty = true;
+    }
+
+    if (mixShowMs_ > 0)
+    {
+        mixShowMs_ = juce::jmax (0, mixShowMs_ - 33);
         dirty = true;
     }
 
@@ -268,9 +330,31 @@ void N3310Editor::drawLcd (juce::Graphics& g) const
                     if (canvas.px[y][x])
                         put (ox + x, oy + y);
 
-            // mode name
-            const char* name = kLcdNames[juce::jlimit (1, 9, mode_ <= 0 ? 1 : mode_)];
-            text (name, (kGridW - n3310art::textWidth (name)) / 2, 49);
+            // mode name, or the mix readout for a moment after the mix changes
+            if (mixShowMs_ > 0)
+            {
+                const std::string label = "MIX " + std::to_string (juce::roundToInt (mix_ * 100.0f)) + "%";
+                text (label.c_str(), (kGridW - n3310art::textWidth (label.c_str())) / 2, 49);
+                const int lit = juce::roundToInt (mix_ * 10.0f);
+                for (int seg = 0; seg < 10; ++seg)
+                    for (int r = 0; r < 3; ++r)
+                        for (int c = 0; c < 5; ++c)
+                        {
+                            const int gx = 8 + seg * 7 + c, gy = 44 + r;
+                            if (seg < lit)
+                                put (gx, gy);
+                            else if (! ghostPass)
+                            {
+                                g.setColour (kInk.withAlpha (0.16f * lcdOn_));
+                                g.fillRect (cell (gx, gy));
+                            }
+                        }
+            }
+            else
+            {
+                const char* name = kLcdNames[juce::jlimit (1, 9, mode_ <= 0 ? 1 : mode_)];
+                text (name, (kGridW - n3310art::textWidth (name)) / 2, 49);
+            }
         };
         drawAll (true);
         drawAll (false);
@@ -314,6 +398,13 @@ void N3310Editor::drawLcd (juce::Graphics& g) const
 void N3310Editor::drawKeys (juce::Graphics& g) const
 {
     const auto t = designToScreen();
+    if (pressedKey_ >= 12)
+    {
+        auto sp = softPath (pressedKey_ - 12);
+        sp.applyTransform (t);
+        g.setColour (juce::Colours::black.withAlpha (0.28f));
+        g.fillPath (sp);
+    }
     for (int i = 0; i < 12; ++i)
     {
         const auto& kd = kKeyData[i];

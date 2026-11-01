@@ -1,7 +1,7 @@
 # 3310
 
 Plugin audio (VST3 / AU) qui émule la voix d'un appel sur un **Nokia 3310**.
-Toute l'interface est le téléphone : les touches **1 à 9** changent de mode, la touche **0** met le plugin en bypass (l'écran du Nokia s'éteint).
+Toute l'interface est le téléphone : les touches **1 à 9** changent de mode, la touche **0** met le plugin en bypass (l'écran du Nokia s'éteint), et les deux **touches souples** sous l'écran règlent le mix (gauche : moins, droite : plus, par pas de 10 %, la molette marche aussi). L'écran affiche une barre « MIX » quelques secondes.
 
 Par Underwater Palace.
 
@@ -21,6 +21,8 @@ Tous les modes restent dans l'univers numérique / radio. Le mode **1** est l'ef
 | 8 | CORRUPT | Données corrompues : décimation, 5 bits, bits qui sautent, buffer qui se fige |
 | 9 | ROBOT | Vocodeur LPC : voix robotique à hauteur fixe, bruit sur les passages non voisés |
 | 0 | BYPASS | Son d'origine, retardé de la latence pour rester aligné, sans clic |
+
+Le mix est un vrai dry/wet : le signal d'origine est retardé de la latence, donc aucun filtre en peigne. Il est aussi automatisable dans le DAW (paramètre « Mix »).
 
 Le signal est passé en mono (comme un vrai téléphone) dans les modes 1 à 9.
 

@@ -6,6 +6,7 @@
 
 // The whole plugin UI is the Nokia: pixel LCD + the 12 keys.
 // Keys 1-9 pick a mode, 0 toggles bypass (the phone switches off).
+// The two soft keys under the screen lower / raise the dry-wet mix.
 class N3310Editor : public juce::AudioProcessorEditor,
                     private juce::Timer
 {
@@ -17,6 +18,7 @@ public:
     void resized() override;
     void mouseDown (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override;
+    void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
 
 private:
     struct Key
@@ -30,6 +32,8 @@ private:
     juce::Path keyPath (const Key&, float grow) const;
     void pressKey (int index);
     void setMode (int mode);
+    void setMix (float mix);
+    void pressSoftKey (int which); // 0 = left (mix down), 1 = right (mix up)
     void drawLcd (juce::Graphics&) const;
     void drawKeys (juce::Graphics&) const;
 
@@ -39,11 +43,15 @@ private:
     N3310Processor& processor_;
     juce::Image phone_;
     juce::ParameterAttachment modeAttachment_;
+    juce::ParameterAttachment mixAttachment_;
 
     juce::Rectangle<float> phoneBounds_;
     float scale_ = 1.0f;
 
     int mode_ = 1;          // 0 = bypass
+    float mix_ = 1.0f;      // 0..1
+    int mixShowMs_ = 0;     // the LCD shows the mix bar while > 0
+    bool ready_ = false;
     float lcdOn_ = 1.0f;    // 0..1, animated
     int frame_ = 0;
     int frameMs_ = 0;

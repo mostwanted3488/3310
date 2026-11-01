@@ -597,12 +597,16 @@ public:
         rampSamples_ = std::max (1, (int) (0.004 * fs));
         wetCoef_ = 1.0f - std::exp (-1.0f / (float) (0.020 * fs));
         wetAmt_ = bypass_ ? 0.0f : 1.0f;
+        mix_ = mixTarget_;
         modeGain_ = 1.0f;
         activeMode_ = requestedMode_;
         wet_.setMode (activeMode_);
     }
 
     int latencySamples() const { return latency_; }
+
+    // 0 = fully dry, 1 = fully wet (the dry path is latency-matched, so no comb filtering)
+    void setMix (float m) { mixTarget_ = clampf (m, 0.0f, 1.0f); }
 
     // 0 = bypass, 1..9 = modes
     void setModeIndex (int idx)
@@ -642,12 +646,14 @@ public:
             }
 
             wetAmt_ += ((bypass_ ? 0.0f : 1.0f) - wetAmt_) * wetCoef_;
+            mix_ += (mixTarget_ - mix_) * wetCoef_;
+            const float amt = wetAmt_ * mix_;
             const float dl = dryL_.process (l);
             const float dr = dryR_.process (r);
-            const float w = softClip (wet * modeGain_) * wetAmt_;
-            L[i] = dl * (1.0f - wetAmt_) + w;
+            const float w = softClip (wet * modeGain_) * amt;
+            L[i] = dl * (1.0f - amt) + w;
             if (R)
-                R[i] = dr * (1.0f - wetAmt_) + w;
+                R[i] = dr * (1.0f - amt) + w;
         }
     }
 
@@ -656,7 +662,7 @@ private:
     WetChannel wet_;
     Delay dryL_, dryR_;
     int latency_ = 0, rampSamples_ = 176;
-    float wetCoef_ = 0.002f, wetAmt_ = 1.0f, modeGain_ = 1.0f;
+    float wetCoef_ = 0.002f, wetAmt_ = 1.0f, modeGain_ = 1.0f, mix_ = 1.0f, mixTarget_ = 1.0f;
     bool bypass_ = false;
     int activeMode_ = 1, requestedMode_ = 1;
 };
