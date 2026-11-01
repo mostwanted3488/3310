@@ -62,7 +62,7 @@
   .title{top:6%;font-size:12cqh;letter-spacing:.14em}
   .modeName{bottom:5%;font-size:12cqh;letter-spacing:.08em}
   #emo{
-    position:absolute;left:50%;top:20%;height:60%;aspect-ratio:48/30;transform:translateX(-50%);
+    position:absolute;left:50%;top:22%;height:50.8%;aspect-ratio:48/30;transform:translateX(-50%);
     image-rendering:pixelated;image-rendering:crisp-edges;
     filter:drop-shadow(1.5px 1.5px 0 var(--lcd-ghost));
   }
@@ -103,11 +103,11 @@
   .key:focus-visible::after{opacity:1;box-shadow:0 0 0 2px #fff}
 
 
-  /* soft keys (mix - / +) */
+  /* scroll key: up arrow = mix +, down arrow = mix - */
   .soft{position:absolute;border:0;padding:0;margin:0;background:transparent;cursor:pointer;outline:none}
   .soft::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,.3);opacity:0;transition:opacity .08s}
   .soft.down::before{opacity:1}
-  .mixbar{position:absolute;left:0;right:0;top:80.6%;height:3.4%;display:none;justify-content:center;gap:2.38cqw}
+  .mixbar{position:absolute;left:0;right:0;top:74.6%;height:5.1%;display:none;justify-content:center;gap:2.38cqw}
   .mixbar.show{display:flex}
   .mixbar i{display:block;width:5.95cqw;height:100%;background:var(--lcd-ghost)}
   .mixbar i.on{background:var(--lcd-ink)}
@@ -302,10 +302,17 @@
 
 
   // ---- soft keys: mix down / up (visual only in the preview) ----
-  var SOFT=[
-    [[102,580],[119,572],[177,602],[178,614],[149,647],[110,618],[100,592]],
-    [[362,570],[380,573],[391,586],[386,605],[345,648],[295,674],[280,672],[270,640],[269,617],[300,603]]
-  ];
+  // right-hand key = two-way scroll key: up arrow end raises the mix, down arrow end lowers it
+  var SCROLL=[[362,570],[380,573],[391,586],[386,605],[345,648],[295,674],[280,672],[270,640],[269,617],[300,603]];
+  var SC=[331,620],SA=[-0.77,0.63];
+  function clipHalf(poly,sgn){ // keep the part of the polygon on one side of the key's middle
+    var out=[],n=poly.length;
+    function f(p){return ((p[0]-SC[0])*SA[0]+(p[1]-SC[1])*SA[1])*sgn;}
+    for(var i=0;i<n;i++){var a=poly[i],b=poly[(i+1)%n],fa=f(a),fb=f(b);
+      if(fa>=0)out.push(a);
+      if((fa>=0)!==(fb>=0)){var t=fa/(fa-fb);out.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]);}}
+    return out;
+  }
   var mix=1, mixTimer=null, mixShowing=false;
   var mixbar=document.getElementById('mixbar');
   for(var si=0;si<10;si++){mixbar.appendChild(document.createElement('i'));}
@@ -318,11 +325,12 @@
     clearTimeout(mixTimer);
     mixTimer=setTimeout(function(){mixShowing=false;mixbar.classList.remove('show');render();},1800);
   }
-  SOFT.forEach(function(poly,which){
+  [[-1,'Mix +',+0.1],[1,'Mix -',-0.1]].forEach(function(h){
+    var poly=clipHalf(SCROLL,h[0]);
     var xs=poly.map(function(p){return p[0];}),ys=poly.map(function(p){return p[1];});
     var minx=Math.min.apply(null,xs),maxx=Math.max.apply(null,xs),miny=Math.min.apply(null,ys),maxy=Math.max.apply(null,ys);
     var b=document.createElement('button');
-    b.className='soft';b.type='button';b.setAttribute('aria-label',which?'Mix +':'Mix -');
+    b.className='soft';b.type='button';b.setAttribute('aria-label',h[1]);
     b.style.left=(minx/W*100)+'%';b.style.top=(miny/H*100)+'%';
     b.style.width=((maxx-minx)/W*100)+'%';b.style.height=((maxy-miny)/H*100)+'%';
     b.style.clipPath='polygon('+poly.map(function(p){return ((p[0]-minx)/(maxx-minx)*100)+'% '+((p[1]-miny)/(maxy-miny)*100)+'%';}).join(',')+')';
@@ -330,7 +338,7 @@
     var up=function(){b.classList.remove('down');};
     b.addEventListener('pointerdown',function(e){
       e.preventDefault();b.classList.add('down');setTimeout(up,110);
-      mix=Math.max(0,Math.min(1,Math.round((mix+(which?0.1:-0.1))*10)/10));
+      mix=Math.max(0,Math.min(1,Math.round((mix+h[2])*10)/10));
       if(current!=='0')showMix();
     });
     b.addEventListener('pointerleave',up);b.addEventListener('pointercancel',up);

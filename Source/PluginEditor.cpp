@@ -18,18 +18,24 @@ const struct { char c; float x, y, w, h, r; } kKeyData[12] = {
     { '*', 100.3f, 889.5f, 80.0f, 40.5f, 19.5f }, { '0', 213.5f, 906.2f, 83.1f, 41.4f, 1.2f },  { '#', 326.5f, 890.4f, 80.6f, 41.7f, -17.6f }
 };
 
-// The two soft keys (polygons in padded-photo coordinates): left = mix down, right = mix up
-const std::vector<juce::Point<float>> kSoftL { { 102, 580 }, { 119, 572 }, { 177, 602 }, { 178, 614 }, { 149, 647 }, { 110, 618 }, { 100, 592 } };
-const std::vector<juce::Point<float>> kSoftR { { 362, 570 }, { 380, 573 }, { 391, 586 }, { 386, 605 }, { 345, 648 },
-                                               { 295, 674 }, { 280, 672 }, { 270, 640 }, { 269, 617 }, { 300, 603 } };
+// The right-hand key of the Nokia is a two-way scroll key: its upper end (up arrow) raises the
+// mix, its lower end (down arrow) lowers it. Polygon in padded-photo coordinates.
+const std::vector<juce::Point<float>> kScrollKey { { 362, 570 }, { 380, 573 }, { 391, 586 }, { 386, 605 }, { 345, 648 },
+                                                   { 295, 674 }, { 280, 672 }, { 270, 640 }, { 269, 617 }, { 300, 603 } };
+const juce::Point<float> kScrollCentre { 331.0f, 620.0f };
+const juce::Point<float> kScrollAxis { -0.77f, 0.63f }; // points towards the lower-left (down arrow) end
 
-juce::Path softPath (int which)
+float scrollSide (juce::Point<float> d) // < 0: up arrow half, > 0: down arrow half
 {
-    const auto& v = which == 0 ? kSoftL : kSoftR;
+    return (d.x - kScrollCentre.x) * kScrollAxis.x + (d.y - kScrollCentre.y) * kScrollAxis.y;
+}
+
+juce::Path scrollKeyPath()
+{
     juce::Path p;
-    p.startNewSubPath (v[0]);
-    for (size_t i = 1; i < v.size(); ++i)
-        p.lineTo (v[i]);
+    p.startNewSubPath (kScrollKey[0]);
+    for (size_t i = 1; i < kScrollKey.size(); ++i)
+        p.lineTo (kScrollKey[i]);
     p.closeSubPath();
     return p.createPathWithRoundedCorners (6.0f);
 }
@@ -126,12 +132,11 @@ int N3310Editor::keyAt (juce::Point<float> d) const
 void N3310Editor::mouseDown (const juce::MouseEvent& e)
 {
     const auto d = toDesign (e.position);
-    for (int which = 0; which < 2; ++which)
-        if (softPath (which).contains (d))
-        {
-            pressSoftKey (which);
-            return;
-        }
+    if (scrollKeyPath().contains (d))
+    {
+        pressScrollKey (scrollSide (d) < 0.0f);
+        return;
+    }
     const int k = keyAt (d);
     if (k >= 0)
         pressKey (k);
@@ -158,11 +163,11 @@ void N3310Editor::setMix (float mix)
     repaint();
 }
 
-void N3310Editor::pressSoftKey (int which)
+void N3310Editor::pressScrollKey (bool up)
 {
-    pressedKey_ = 12 + which;
+    pressedKey_ = up ? 12 : 13;
     pressedMs_ = 0;
-    setMix (juce::jlimit (0.0f, 1.0f, std::round ((mix_ + (which == 0 ? -0.1f : 0.1f)) * 10.0f) / 10.0f));
+    setMix (juce::jlimit (0.0f, 1.0f, std::round ((mix_ + (up ? 0.1f : -0.1f)) * 10.0f) / 10.0f));
 }
 
 void N3310Editor::setMode (int mode)
@@ -400,10 +405,20 @@ void N3310Editor::drawKeys (juce::Graphics& g) const
     const auto t = designToScreen();
     if (pressedKey_ >= 12)
     {
-        auto sp = softPath (pressedKey_ - 12);
-        sp.applyTransform (t);
+        // shade only the half of the scroll key that was pressed
+        juce::Graphics::ScopedSaveState state (g);
+        g.reduceClipRegion (scrollKeyPath(), t);
+        const float sgn = pressedKey_ == 13 ? 1.0f : -1.0f;
+        const juce::Point<float> a = kScrollAxis, perp { 0.63f, 0.77f };
+        juce::Path half;
+        half.startNewSubPath (kScrollCentre + perp * 1000.0f);
+        half.lineTo (kScrollCentre - perp * 1000.0f);
+        half.lineTo (kScrollCentre - perp * 1000.0f + a * (1000.0f * sgn));
+        half.lineTo (kScrollCentre + perp * 1000.0f + a * (1000.0f * sgn));
+        half.closeSubPath();
+        half.applyTransform (t);
         g.setColour (juce::Colours::black.withAlpha (0.28f));
-        g.fillPath (sp);
+        g.fillPath (half);
     }
     for (int i = 0; i < 12; ++i)
     {

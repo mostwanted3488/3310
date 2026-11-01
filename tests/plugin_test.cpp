@@ -142,7 +142,7 @@ int main (int argc, char** argv)
             fos.truncate();
             png.writeImageToStream (img, fos);
         }
-        // soft keys: right = mix up, left = mix down
+        // scroll key: up arrow = mix up, down arrow = mix down
         {
             setMode (proc, 3);
             auto* mp = proc.apvts.getParameter ("mix");
@@ -157,9 +157,9 @@ int main (int argc, char** argv)
                                                ed.get(), ed.get(), juce::Time::getCurrentTime(), pos, juce::Time::getCurrentTime(), 1, false));
                 juce::MessageManager::getInstance()->runDispatchLoopUntil (100);
             };
-            clickAt (330.0f, 622.0f); // right soft key
+            clickAt (368.0f, 590.0f); // scroll key, up arrow end
             float mx = proc.apvts.getRawParameterValue ("mix")->load();
-            std::printf ("right soft key -> mix %.2f %s\n", mx, std::fabs (mx - 0.6f) < 0.01f ? "ok" : "BAD");
+            std::printf ("up arrow -> mix %.2f %s\n", mx, std::fabs (mx - 0.6f) < 0.01f ? "ok" : "BAD");
             if (std::fabs (mx - 0.6f) > 0.01f) ++failures;
             {
                 auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
@@ -168,10 +168,10 @@ int main (int argc, char** argv)
                 fos.setPosition (0); fos.truncate();
                 png.writeImageToStream (img, fos);
             }
-            clickAt (140.0f, 610.0f); // left soft key
-            clickAt (140.0f, 610.0f);
+            clickAt (300.0f, 640.0f); // scroll key, down arrow end
+            clickAt (300.0f, 640.0f);
             mx = proc.apvts.getRawParameterValue ("mix")->load();
-            std::printf ("left soft key x2 -> mix %.2f %s\n", mx, std::fabs (mx - 0.4f) < 0.01f ? "ok" : "BAD");
+            std::printf ("down arrow x2 -> mix %.2f %s\n", mx, std::fabs (mx - 0.4f) < 0.01f ? "ok" : "BAD");
             if (std::fabs (mx - 0.4f) > 0.01f) ++failures;
             mp->setValueNotifyingHost (mp->convertTo0to1 (1.0f));
             juce::MessageManager::getInstance()->runDispatchLoopUntil (100);

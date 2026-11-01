@@ -6,7 +6,7 @@
 
 // The whole plugin UI is the Nokia: pixel LCD + the 12 keys.
 // Keys 1-9 pick a mode, 0 toggles bypass (the phone switches off).
-// The two soft keys under the screen lower / raise the dry-wet mix.
+// The right-hand scroll key (up / down arrows) raises / lowers the dry-wet mix.
 class N3310Editor : public juce::AudioProcessorEditor,
                     private juce::Timer
 {
@@ -33,7 +33,7 @@ private:
     void pressKey (int index);
     void setMode (int mode);
     void setMix (float mix);
-    void pressSoftKey (int which); // 0 = left (mix down), 1 = right (mix up)
+    void pressScrollKey (bool up); // right-hand key: up arrow = mix up, down arrow = mix down
     void drawLcd (juce::Graphics&) const;
     void drawKeys (juce::Graphics&) const;
 
