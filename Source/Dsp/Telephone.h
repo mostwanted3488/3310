@@ -61,6 +61,11 @@ public:
     }
 
 private:
+    // Master level of every noise that is *added* on purpose (line hiss, AM static, crackle,
+    // heterodyne whistle, packet-loss bursts, digital ticks, squelch tail). 0 = clean effects,
+    // 1 = the original dirty character.
+    static constexpr float kNoise = 0.0f;
+
     // ------------------------------------------------------------------ setup
     void resetState()
     {
@@ -80,7 +85,7 @@ private:
         fadePh_ = 0.0f; whPh_ = 0.0f; crack_ = 0.0f;
         sqEnv_ = 0.0f; gEnv_ = 0.0f; gOpen_ = false; gHold_ = 0; gGain_ = 0.0f;
         up16_.reset(); dn16_.reset(); carPh_ = 0.0f; lfoPh_ = 0.0f;
-        glHold_ = 0; glVal_ = 0.0f; sh_ = 0; shVal_ = 0.0f; tick_ = 0.0f;
+        glHold_ = 0; glVal_ = 0.0f; sh_ = 0; shVal_ = 0.0f; tick_ = 0.0f; cEnv_ = 0.0f;
     }
 
     void configure()
@@ -141,7 +146,7 @@ private:
         hp_.highpass (fs, hpF);
         lp_.lowpass (fs, lpF);
         hiss_.lowpass (fs, 3200.0, 0.7071);
-        hissGain_ = hissDb_ > -150.0f ? dbToGain (hissDb_) : 0.0f;
+        hissGain_ = hissDb_ > -150.0f ? dbToGain (hissDb_) * kNoise : 0.0f;
     }
 
     float addHiss (float y) { return y + hiss_.process (rng_.gauss() * hissGain_); }
@@ -304,8 +309,8 @@ private:
         whPh_ += 2.0f * kPi * (1750.0f + 160.0f * std::sin (fadePh_ * 1.7f)) / (float) kTelRate;
         if (whPh_ > 2.0f * kPi) whPh_ -= 2.0f * kPi;
 
-        const float staticLvl = dbToGain (-48.0f) * (1.5f - fade);
-        float y = det * fade + rng_.gauss() * staticLvl + crack_ + 0.0035f * std::sin (whPh_);
+        const float staticLvl = dbToGain (-48.0f) * (1.5f - fade) * kNoise;
+        float y = det * fade + rng_.gauss() * staticLvl + crack_ * kNoise + 0.0035f * kNoise * std::sin (whPh_);
         return post_.process (y);
     }
 
@@ -368,7 +373,7 @@ private:
             sqEnv_ = 0.22f; // squelch tail burst
 
         gGain_ += ((gOpen_ ? 1.0f : 0.0f) - gGain_) * 0.04f;
-        const float sq = noiseBp_.process (rng_.gauss()) * sqEnv_;
+        const float sq = noiseBp_.process (rng_.gauss()) * sqEnv_ * kNoise;
         sqEnv_ *= 0.9987f;
 
         return c * gGain_ + sq + (gOpen_ ? hiss_.process (rng_.gauss() * hissGain_) : 0.0f);
@@ -403,11 +408,11 @@ private:
         float y = framePush (v);
         burst_ *= 0.996f;
         if (burst_ > 0.0005f)
-            y += noiseBp_.process (rng_.gauss()) * burst_;
+            y += noiseBp_.process (rng_.gauss()) * burst_ * kNoise;
         if (rng_.uni() < 0.00015f)
             crack_ = rng_.bi() * 0.12f;
         crack_ *= 0.5f;
-        return addHiss (y + crack_);
+        return addHiss (y + crack_ * kNoise);
     }
 
     // 8 - corruption: decimation, 5-bit companding, flipped bits, buffer freezes
@@ -430,17 +435,16 @@ private:
 
         uint8_t code = muLawEncode (shVal_);
         code = (uint8_t) ((code & 0x80) | (((code & 0x7F) >> 2) << 2));
-        if (rng_.uni() < 0.006f)
-        {
-            int bit = (int) (rng_.next() % 8);
-            if (bit >= 6 && rng_.uni() < 0.75f)
-                bit -= 4;
-            code = (uint8_t) (code ^ (1 << bit));
-        }
+        // bit errors only happen while there is signal, and the loudest bits only on loud passages
+        // (otherwise they would click on silence and on quiet tails)
+        cEnv_ = std::max (std::fabs (shVal_), cEnv_ * 0.9995f);
+        const int maxBit = cEnv_ > 0.1f ? 8 : (cEnv_ > 0.03f ? 7 : (cEnv_ > 0.012f ? 6 : 0));
+        if (maxBit > 0 && rng_.uni() < 0.006f)
+            code = (uint8_t) (code ^ (1 << (int) (rng_.next() % (uint32_t) maxBit)));
         float y = muLawDecode (code);
         if (rng_.uni() < 0.002f)
             tick_ = rng_.bi() * 0.12f;
-        y += tick_;
+        y += tick_ * kNoise;
         tick_ = 0.0f;
         return addHiss (post_.process (y));
     }
@@ -494,7 +498,7 @@ private:
 
     // corrupt
     int glHold_ = 0, sh_ = 0;
-    float glVal_ = 0.0f, shVal_ = 0.0f, tick_ = 0.0f;
+    float glVal_ = 0.0f, shVal_ = 0.0f, tick_ = 0.0f, cEnv_ = 0.0f;
 };
 
 // ---------------------------------------------------------------------------

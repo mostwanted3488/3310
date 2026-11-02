@@ -11,16 +11,18 @@ Tous les modes restent dans l'univers numérique / radio. Le mode **1** est l'ef
 
 | Touche | Mode | Ce que ça fait |
 |---|---|---|
-| 1 | CALL | Appel GSM : bande téléphonique 300-3400 Hz, codec type GSM 06.10 (trames de 20 ms, LPC, excitation RPE), compression douce, léger souffle de ligne |
+| 1 | CALL | Appel GSM : bande téléphonique 300-3400 Hz, codec type GSM 06.10 (trames de 20 ms, LPC, excitation RPE), compression douce |
 | 2 | STUTTER | Boucles de buffer aléatoires (bégaiement numérique, parfois qui accélère) avant le codec |
-| 3 | AM RADIO | Radio AM : détecteur à diode, fading lent, statique, craquements, sifflement d'hétérodyne |
+| 3 | AM RADIO | Radio AM : détecteur à diode, fading lent |
 | 4 | LOW BATT | Batterie qui meurt : échantillonnage réduit à 3 kHz, compression 6 bits, hauteur qui flotte, chutes de tension |
-| 5 | WALKIE | Talkie-walkie : bande étroite 500-2600 Hz, compression brutale, squelch avec souffle de fin de transmission |
+| 5 | WALKIE | Talkie-walkie : bande étroite 500-2600 Hz, compression brutale, squelch qui coupe le son entre les phrases |
 | 6 | SCRAMBLE | Brouilleur de voix : inversion du spectre par modulation en anneau |
-| 7 | BAD LINE | Mauvaise ligne : codec très grossier, pertes de paquets en rafales (remplacement de trame puis coupure), bruit numérique |
-| 8 | CORRUPT | Données corrompues : décimation, 5 bits, bits qui sautent, buffer qui se fige |
+| 7 | BAD LINE | Mauvaise ligne : codec très grossier, pertes de paquets en rafales (remplacement de trame puis coupure) |
+| 8 | CORRUPT | Données corrompues : décimation, 5 bits, bits qui sautent (uniquement quand il y a du signal), buffer qui se fige |
 | 9 | ROBOT | Vocodeur LPC : voix robotique à hauteur fixe, bruit sur les passages non voisés |
 | 0 | BYPASS | Son d'origine, retardé de la latence pour rester aligné, sans clic |
+
+Aucun bruit n'est ajouté : pas de souffle, de statique ni de craquements, et le silence en entrée reste un silence en sortie. (Le niveau de ces bruits, supprimés par défaut, se règle avec la constante `kNoise` dans `Source/Dsp/Telephone.h`.)
 
 Le mix est un vrai dry/wet : le signal d'origine est retardé de la latence, donc aucun filtre en peigne. Il est aussi automatisable dans le DAW (paramètre « Mix »).
 
