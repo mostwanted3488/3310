@@ -18,7 +18,7 @@ const struct { char c; float x, y, w, h, r; } kKeyData[12] = {
     { '*', 100.3f, 889.5f, 80.0f, 40.5f, 19.5f }, { '0', 213.5f, 906.2f, 83.1f, 41.4f, 1.2f },  { '#', 326.5f, 890.4f, 80.6f, 41.7f, -17.6f }
 };
 
-// The right-hand key of the Nokia is a two-way scroll key: its upper end (up arrow) raises the
+// The right-hand key of the phone is a two-way scroll key: its upper end (up arrow) raises the
 // mix, its lower end (down arrow) lowers it. Polygon in padded-photo coordinates.
 const std::vector<juce::Point<float>> kScrollKey { { 362, 570 }, { 380, 573 }, { 391, 586 }, { 386, 605 }, { 345, 648 },
                                                    { 295, 674 }, { 280, 672 }, { 270, 640 }, { 269, 617 }, { 300, 603 } };

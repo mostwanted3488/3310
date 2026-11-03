@@ -1,5 +1,5 @@
 #pragma once
-// Pixel art for the Nokia LCD: a 5x7 font and the animated emojis.
+// Pixel art for the BOBAL phone LCD: a 5x7 font and the animated emojis.
 // Ported 1:1 from the HTML preview so the plugin and the preview look the same.
 // No JUCE dependency.
 

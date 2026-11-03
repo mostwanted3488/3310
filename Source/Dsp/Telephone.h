@@ -3,7 +3,7 @@
 //
 //   host audio -> mono -> anti-alias -> 8 kHz -> TelCore (9 modes) -> reconstruct -> host
 //
-// Mode 1 is the base effect: a 90s GSM call on a Nokia 3310. Modes 2-9 stay in
+// Mode 1 is the base effect: a 90s GSM call on an old mobile phone (the BOBAL 3310). Modes 2-9 stay in
 // the same digital / radio universe (stutter, AM radio, dying battery, walkie
 // talkie, voice scrambler, bad line, bit corruption, vocoder robot).
 //

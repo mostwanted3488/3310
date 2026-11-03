@@ -1,7 +1,7 @@
 # 3310
 
-Plugin audio (VST3 / AU) qui émule la voix d'un appel sur un **Nokia 3310**.
-Toute l'interface est le téléphone : les touches **1 à 9** changent de mode, la touche **0** met le plugin en bypass (l'écran du Nokia s'éteint), et la **touche de droite** sous l'écran (flèches haut / bas) règle le mix : flèche haut pour monter, flèche bas pour baisser, par pas de 10 % (la molette marche aussi). L'écran affiche une barre « MIX » quelques secondes.
+Plugin audio (VST3 / AU) qui émule la voix d'un appel sur un vieux téléphone mobile GSM, le **BOBAL 3310**.
+Toute l'interface est le téléphone : les touches **1 à 9** changent de mode, la touche **0** met le plugin en bypass (l'écran du BOBAL s'éteint), et la **touche de droite** sous l'écran (flèches haut / bas) règle le mix : flèche haut pour monter, flèche bas pour baisser, par pas de 10 % (la molette marche aussi). L'écran affiche une barre « MIX » quelques secondes.
 
 Par Underwater Palace.
 
@@ -63,9 +63,9 @@ Source/Dsp/Primitives.h   filtres, compresseur, mu-law, bruit
 Source/Dsp/Codec.h        codec GSM-lite et vocodeur LPC
 Source/Dsp/Telephone.h    moteur : rééchantillonnage 8 kHz, les 9 modes, bypass sans clic
 Source/PixelArt.h         police 5x7 et emojis animés de l'écran
-Source/PluginEditor.*     interface Nokia (écran LCD pixel + 12 touches)
+Source/PluginEditor.*     interface du téléphone BOBAL (écran LCD pixel + 12 touches)
 Source/PluginProcessor.*  plugin JUCE, paramètre Mode (0 = bypass)
-Assets/phone.png          photo du Nokia 3310
+Assets/phone.png          photo du téléphone (plaque BOBAL)
 ```
 
 `preview/` contient la maquette web de l'interface (page HTML autonome), identique à l'éditeur du plugin.

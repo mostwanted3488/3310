@@ -4,7 +4,7 @@
 #include "PluginProcessor.h"
 #include "PixelArt.h"
 
-// The whole plugin UI is the Nokia: pixel LCD + the 12 keys.
+// The whole plugin UI is the phone: pixel LCD + the 12 keys.
 // Keys 1-9 pick a mode, 0 toggles bypass (the phone switches off).
 // The right-hand scroll key (up / down arrows) raises / lowers the dry-wet mix.
 class N3310Editor : public juce::AudioProcessorEditor,
