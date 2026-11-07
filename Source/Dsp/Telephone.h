@@ -616,6 +616,11 @@ public:
         kIn_[0].highpass (fs, 38.0, 0.5);       kWet_[0] = kIn_[0];
         kIn_[1].highshelf (fs, 1682.0, 4.0, 0.707); kWet_[1] = kIn_[1];
         inPow_ = wetPow_ = peak_ = 0.0f;
+        gLvl_ = gRef_ = 0.0f; gGain_ = 1.0f;
+        gCoefLvl_ = 1.0f - std::exp (-1.0f / (float) (0.008 * fs));
+        gCoefRef_ = 1.0f - std::exp (-1.0f / (float) (4.0 * fs));
+        gCoefOpen_ = 1.0f - std::exp (-1.0f / (float) (0.0015 * fs));
+        gCoefClose_ = 1.0f - std::exp (-1.0f / (float) (0.06 * fs));
         autoGain_ = autoTarget_ = 1.0f;
         coefPow_ = 1.0f - std::exp (-1.0f / (float) (0.25 * fs));
         coefPeak_ = 1.0f - std::exp (-1.0f / (float) (0.2 * fs));
@@ -648,7 +653,17 @@ public:
         {
             const float l = L[i];
             const float r = R ? R[i] : l;
-            const float mono = R ? 0.5f * (l + r) : l;
+            const float mono0 = R ? 0.5f * (l + r) : l;
+
+            // background-noise gate (soft expander, relative to the recent loudest level):
+            // quiet room noise / hiss between words is pulled down instead of being boosted by the codec and the AGC
+            gLvl_ += (mono0 * mono0 - gLvl_) * gCoefLvl_;
+            gRef_ = gLvl_ > gRef_ ? gLvl_ : gRef_ - gRef_ * gCoefRef_;
+            const float thrPow = gRef_ * 0.004f; // -24 dB under the recent peak level
+            const float gTarget = gLvl_ >= thrPow ? 1.0f : std::max (0.016f, std::pow (gLvl_ / std::max (thrPow, 1.0e-12f), 1.5f)); // 4:1 expansion, up to -36 dB
+            gGain_ += (gTarget - gGain_) * (gTarget > gGain_ ? gCoefOpen_ : gCoefClose_);
+            const float mono = mono0 * gGain_;
+
             const float wetRaw = wet_.process (mono);
 
             // loudness match: wet level follows the input level (slow, so no pumping)
@@ -702,6 +717,7 @@ private:
     float wetCoef_ = 0.002f, wetAmt_ = 1.0f, modeGain_ = 1.0f, mix_ = 1.0f, mixTarget_ = 1.0f;
     bool bypass_ = false;
     int activeMode_ = 1, requestedMode_ = 1;
+    float gLvl_ = 0, gRef_ = 0, gGain_ = 1, gCoefLvl_ = 0.01f, gCoefRef_ = 1e-5f, gCoefOpen_ = 0.1f, gCoefClose_ = 0.001f;
     Biquad kIn_[2], kWet_[2];
     float inPow_ = 0, wetPow_ = 0, peak_ = 0, autoGain_ = 1, autoTarget_ = 1;
     float coefPow_ = 0.0001f, coefPeak_ = 0.0001f, coefDown_ = 0.001f, coefUp_ = 0.0001f;

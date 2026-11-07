@@ -22,6 +22,8 @@ Tous les modes restent dans l'univers numérique / radio. Le mode **1** est l'ef
 | 9 | ROBOT | Vocodeur LPC : voix robotique à hauteur fixe, bruit sur les passages non voisés |
 | 0 | BYPASS | Son d'origine, retardé de la latence pour rester aligné, sans clic |
 
+Un gate doux (expander relatif au niveau récent) abaisse le bruit de fond entre les mots, pour que le codec et l'AGC ne le gonflent pas.
+
 Le volume est compensé automatiquement : le son « téléphone » garde la même loudness perçue que le son d'entrée (voix comme musique avec basses), avec une limite de crête pour éviter la saturation.
 
 Aucun bruit n'est ajouté : pas de souffle, de statique ni de craquements, et le silence en entrée reste un silence en sortie. (Le niveau de ces bruits, supprimés par défaut, se règle avec la constante `kNoise` dans `Source/Dsp/Telephone.h`.)
