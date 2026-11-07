@@ -22,6 +22,8 @@ Tous les modes restent dans l'univers numérique / radio. Le mode **1** est l'ef
 | 9 | SATELLITE | Appel longue distance : codec GSM puis écho d'environ 330 ms, chaque répétition plus sombre et plus fine, avec une lente dérive |
 | 0 | BYPASS | Son d'origine, retardé de la latence pour rester aligné, sans clic |
 
+Les modes 1, 2 et 9 utilisent une excitation du codec dense (une impulsion par échantillon au lieu d'une sur trois comme le vrai GSM) : le caractère « appel numérique » reste (bande téléphone, lissage du codec) mais sans le souffle de quantification. Le mode 7 garde le codec dégradé volontairement.
+
 Un gate doux (expander relatif au niveau récent) abaisse le bruit de fond entre les mots, pour que le codec et l'AGC ne le gonflent pas.
 
 Le volume est compensé automatiquement : le son « téléphone » garde la même loudness perçue que le son d'entrée (voix comme musique avec basses), avec une limite de crête pour éviter la saturation.

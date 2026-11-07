@@ -91,8 +91,11 @@ struct GsmParams
     int lag[4] = { 40, 40, 40, 40 };
     float bq[4] = { 0 };
     int grid[4] = { 0 };
-    float pulse[4][13] = { { 0 } }; // dequantised RPE pulses (already scaled by xmax)
+    int step = 3;                   // RPE pulse spacing: 3 = GSM (13 pulses), 1 = every sample (40 pulses, much cleaner)
+    float pulse[4][40] = { { 0 } }; // dequantised RPE pulses (already scaled by xmax)
 };
+
+inline int pulseCount (int step) { return step == 3 ? 13 : 40 / step; }
 
 struct SynthState
 {
@@ -115,12 +118,12 @@ inline void interpA (const float* prevLar, const float* curLar, int sub, float* 
 }
 
 // Rebuilds one 40-sample subframe (shared by encoder-side reconstruction & decoder)
-inline void synthSub (SynthState& st, const float* a, int lag, float bq, int grid, const float* pulses, float* out)
+inline void synthSub (SynthState& st, const float* a, int lag, float bq, int grid, int step, const float* pulses, float* out)
 {
     float dq[kSub];
     std::fill (dq, dq + kSub, 0.0f);
-    for (int i = 0; i < 13; ++i)
-        dq[grid + 3 * i] = pulses[i];
+    for (int i = 0; i < pulseCount (step); ++i)
+        dq[grid + step * i] = pulses[i];
     for (int k = 0; k < kSub; ++k)
         dq[k] += bq * st.dp[120 + k - lag];
 
@@ -148,6 +151,7 @@ public:
         float larCoarse = 1.0f;       // LAR quantiser step multiplier
         float gainStepsPerOct = 3.0f; // block-amplitude resolution
         bool ltp = true;
+        int pulseStep = 3;            // 3 = GSM-like (13 sparse pulses, noisy), 1 = dense pulses (clean)
     };
 
     void reset()
@@ -216,11 +220,12 @@ public:
             // RPE grid selection
             int grid = 0;
             float bestE = -1.0f;
-            for (int m = 0; m < 4; ++m)
+            const int np = pulseCount (cfg.pulseStep);
+            for (int m = 0; m < (cfg.pulseStep == 3 ? 4 : cfg.pulseStep); ++m)
             {
                 float en = 0.0f;
-                for (int i = 0; i < 13; ++i)
-                    en += e[m + 3 * i] * e[m + 3 * i];
+                for (int i = 0; i < np; ++i)
+                    en += e[m + cfg.pulseStep * i] * e[m + cfg.pulseStep * i];
                 if (en > bestE)
                 {
                     bestE = en;
@@ -228,24 +233,25 @@ public:
                 }
             }
             float xmax = 0.0f;
-            for (int i = 0; i < 13; ++i)
-                xmax = std::max (xmax, std::fabs (e[grid + 3 * i]));
+            for (int i = 0; i < np; ++i)
+                xmax = std::max (xmax, std::fabs (e[grid + cfg.pulseStep * i]));
 
             p.lag[s] = bestLag;
             p.bq[s] = bq;
             p.grid[s] = grid;
+            p.step = cfg.pulseStep;
 
             if (xmax < 1.0e-5f)
             {
-                std::fill (p.pulse[s], p.pulse[s] + 13, 0.0f);
+                std::fill (p.pulse[s], p.pulse[s] + 40, 0.0f);
             }
             else
             {
                 const float spo = cfg.gainStepsPerOct;
                 const float xq = std::pow (2.0f, std::round (std::log2 (xmax) * spo) / spo);
-                for (int i = 0; i < 13; ++i)
+                for (int i = 0; i < np; ++i)
                 {
-                    const float v = e[grid + 3 * i] / xq; // about -1..1
+                    const float v = e[grid + cfg.pulseStep * i] / xq; // about -1..1
                     int idx = (int) std::floor ((v * 0.5f + 0.5f) * 8.0f);
                     idx = std::max (0, std::min (7, idx));
                     p.pulse[s][i] = (((float) idx + 0.5f) / 8.0f * 2.0f - 1.0f) * xq;
@@ -254,7 +260,7 @@ public:
 
             // keep the encoder-side reconstruction in sync (needed by LTP of next subframe)
             float tmp[kSub];
-            synthSub (enc_, a, bestLag, bq, grid, p.pulse[s], tmp);
+            synthSub (enc_, a, bestLag, bq, grid, cfg.pulseStep, p.pulse[s], tmp);
         }
 
         std::memcpy (xHist_, in + kFrame - 8, 8 * sizeof (float));
@@ -267,7 +273,7 @@ public:
         {
             float a[8];
             interpA (prevLarDec_, p.larQ, s, a);
-            synthSub (dec_, a, p.lag[s], p.bq[s], p.grid[s], p.pulse[s], out + s * kSub);
+            synthSub (dec_, a, p.lag[s], p.bq[s], p.grid[s], p.step, p.pulse[s], out + s * kSub);
         }
         std::memcpy (prevLarDec_, p.larQ, 8 * sizeof (float));
     }

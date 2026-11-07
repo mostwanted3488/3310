@@ -197,6 +197,7 @@ private:
             case 1:
             case 2:
             case 9:
+                cfg.pulseStep = 1; // dense excitation: the call stays clean, no codec hiss
                 gsm_.encode (frameIn_, cfg, params_);
                 gsm_.decode (params_, frameOut_);
                 matchLevel (false);
@@ -219,7 +220,7 @@ private:
                     for (int s = 0; s < 4; ++s)
                     {
                         rx.bq[s] *= 0.8f;
-                        for (int i = 0; i < 13; ++i)
+                        for (int i = 0; i < 40; ++i)
                             rx.pulse[s][i] *= sc;
                     }
                     // digital noise burst on a lost frame: only audible when there is a signal
