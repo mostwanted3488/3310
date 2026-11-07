@@ -69,3 +69,8 @@ Assets/phone.png          photo du téléphone (plaque BOBAL)
 ```
 
 `preview/` contient la maquette web de l'interface (page HTML autonome), identique à l'éditeur du plugin.
+
+## Preview web (test avec ton propre son)
+
+`preview/index.html` embarque le **vrai moteur DSP** compilé en WebAssembly (`web/build_wasm.sh`, source `web/engine_wasm.cpp`) :
+bouton « Importer un son » (ou glisser-déposer un fichier), lecture en boucle, et les touches 1-9, 0 (bypass) et la flèche de mix agissent en direct sur le son.
