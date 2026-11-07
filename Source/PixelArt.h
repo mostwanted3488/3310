@@ -247,19 +247,18 @@ inline void drawEmoji (Canvas& c, int mode, int f)
             c.clr (18, 21, 13, 1);
             break;
         }
-        case 9: // ROBOT
+        case 9: // SATELLITE
         {
-            c.C (24, 3, 1); c.L (24, 4, 24, 7);
-            if (f % 2) c.D (24, 2, 1);
-            c.R (13, 7, 22, 1); c.R (13, 23, 22, 1); c.R (13, 7, 1, 17); c.R (34, 7, 1, 17);
-            c.R (10, 12, 3, 6); c.R (35, 12, 3, 6);
-            const bool blink = (f % 6 == 5);
-            if (blink) { c.L (17, 14, 21, 14); c.L (27, 14, 31, 14); }
-            else { c.R (17, 12, 4, 4); c.R (27, 12, 4, 4); }
-            c.R (18, 19, 12, 1);
-            for (int x = 18; x <= 30; x += 3) c.R (x, 19, 1, 3);
-            c.R (18, 21, 12, 1);
-            if (f % 2) c.P (40, 14);
+            // body, solar panels, dish, radio waves that travel up, twinkling stars
+            c.R (20, 14, 9, 9); c.clr (21, 15, 7, 7); c.D (24, 18, 1);
+            c.R (4, 16, 14, 7); c.clr (5, 17, 12, 5); c.R (9, 17, 1, 5); c.R (13, 17, 1, 5);
+            c.R (31, 16, 14, 7); c.clr (32, 17, 12, 5); c.R (35, 17, 1, 5); c.R (39, 17, 1, 5);
+            c.R (18, 19, 2, 1); c.R (29, 19, 2, 1);
+            c.L (24, 14, 24, 11); c.L (21, 8, 24, 11); c.L (27, 8, 24, 11);
+            const int t = f % 3;
+            const int r = 3 + t * 3;
+            c.C (24, 8, r, [r] (int dx, int dy) { return dy < -1 && dx * dx < (r * r) / 2 + 2; });
+            if (f % 2) { c.P (6, 6); c.P (41, 9); c.P (10, 27); } else { c.P (42, 4); c.P (5, 11); c.P (38, 27); }
             break;
         }
         default: break;

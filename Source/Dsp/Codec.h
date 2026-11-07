@@ -1,6 +1,6 @@
 #pragma once
 // A small GSM-06.10-style speech codec (LPC-8 + long term predictor + RPE grid
-// excitation) and an LPC vocoder. This is not bit-exact GSM, it is built to
+// excitation). This is not bit-exact GSM, it is built to
 // reproduce the *character* of a 90s mobile call: 20 ms frames, quantised
 // log-area ratios, 13-pulse RPE excitation, frame substitution on packet loss.
 
@@ -277,105 +277,6 @@ private:
     float prevLarEnc_[8] = { 0 };
     float prevLarDec_[8] = { 0 };
     SynthState enc_, dec_;
-};
-
-// ---------------------------------------------------------------------------
-// LPC vocoder: LPC-8 filter excited by a synthetic pulse train / noise.
-class Vocoder
-{
-public:
-    void reset()
-    {
-        std::fill (xHist_, xHist_ + 8, 0.0f);
-        std::fill (prevLar_, prevLar_ + 8, 0.0f);
-        std::fill (y_, y_ + 8, 0.0f);
-        countdown_ = 0;
-        exLp_ = 0.0f;
-        exLp2_ = 0.0f;
-    }
-
-    void process (const float* in, float* out, float larCoarse, float pitchHz, Rng& rng)
-    {
-        float lar[8];
-        analyseLpc (in, larCoarse, lar);
-
-        // voicing decision: normalised autocorrelation peak (lags 32..100 = 250..80 Hz)
-        float r0 = 1.0e-9f;
-        for (int n = 0; n < kFrame; ++n)
-            r0 += in[n] * in[n];
-        float best = 0.0f;
-        for (int lag = 32; lag <= 100; ++lag)
-        {
-            float c = 0.0f;
-            for (int n = lag; n < kFrame; ++n)
-                c += in[n] * in[n - lag];
-            best = std::max (best, c / r0);
-        }
-        const bool voiced = best > 0.25f && r0 > 1.0e-5f * (float) kFrame;
-        const int period = std::max (20, (int) std::lround ((float) kTelRate / pitchHz));
-
-        float ext[8 + kFrame];
-        std::memcpy (ext, xHist_, 8 * sizeof (float));
-        std::memcpy (ext + 8, in, kFrame * sizeof (float));
-
-        for (int s = 0; s < 4; ++s)
-        {
-            float a[8];
-            interpA (prevLar_, lar, s, a);
-
-            float e2 = 0.0f;
-            for (int k = 0; k < kSub; ++k)
-            {
-                const int n = 8 + s * kSub + k;
-                float pred = 0.0f;
-                for (int i = 0; i < 8; ++i)
-                    pred += a[i] * ext[n - 1 - i];
-                const float d = ext[n] - pred;
-                e2 += d * d;
-            }
-            float g = std::sqrt (e2 / (float) kSub);
-            if (g > 1.0e-6f)
-                g = std::pow (2.0f, std::round (std::log2 (g) * 2.0f) / 2.0f); // 3 dB steps
-
-            for (int k = 0; k < kSub; ++k)
-            {
-                float ex;
-                if (voiced)
-                {
-                    ex = 0.0f;
-                    if (--countdown_ <= 0)
-                    {
-                        ex = g * std::sqrt ((float) period);
-                        countdown_ = period;
-                    }
-                    ex += 0.06f * g * rng.gauss();
-                }
-                else
-                {
-                    ex = g * rng.gauss();
-                }
-                exLp_ += 0.40f * (ex - exLp_); // two cascaded poles: wider, less spiky pulses
-                exLp2_ += 0.40f * (exLp_ - exLp2_);
-                float acc = exLp2_ * 1.6f;
-                for (int i = 0; i < 8; ++i)
-                    acc += a[i] * y_[i];
-                acc = clampf (acc, -4.0f, 4.0f);
-                for (int i = 7; i > 0; --i)
-                    y_[i] = y_[i - 1];
-                y_[0] = flushDenormal (acc);
-                out[s * kSub + k] = acc;
-            }
-        }
-        std::memcpy (xHist_, in + kFrame - 8, 8 * sizeof (float));
-        std::memcpy (prevLar_, lar, 8 * sizeof (float));
-    }
-
-private:
-    float xHist_[8] = { 0 };
-    float prevLar_[8] = { 0 };
-    float y_[8] = { 0 };
-    int countdown_ = 0;
-    float exLp_ = 0.0f, exLp2_ = 0.0f;
 };
 
 } // namespace n3310

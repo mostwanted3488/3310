@@ -19,7 +19,7 @@ Tous les modes restent dans l'univers numérique / radio. Le mode **1** est l'ef
 | 6 | SCRAMBLE | Brouilleur de voix : inversion du spectre par modulation en anneau |
 | 7 | BAD LINE | Mauvaise ligne : codec très grossier, pertes de paquets en rafales (remplacement de trame puis coupure) |
 | 8 | CORRUPT | Données corrompues : décimation, 5 bits, bits qui sautent (uniquement quand il y a du signal), buffer qui se fige |
-| 9 | ROBOT | Vocodeur LPC : voix robotique à hauteur fixe, bruit sur les passages non voisés |
+| 9 | SATELLITE | Appel longue distance : codec GSM puis écho d'environ 330 ms, chaque répétition plus sombre et plus fine, avec une lente dérive |
 | 0 | BYPASS | Son d'origine, retardé de la latence pour rester aligné, sans clic |
 
 Un gate doux (expander relatif au niveau récent) abaisse le bruit de fond entre les mots, pour que le codec et l'AGC ne le gonflent pas.
@@ -64,7 +64,7 @@ JUCE 8.0.15 est téléchargé automatiquement. Le VST3 se trouve ensuite dans `b
 
 ```
 Source/Dsp/Primitives.h   filtres, compresseur, mu-law, bruit
-Source/Dsp/Codec.h        codec GSM-lite et vocodeur LPC
+Source/Dsp/Codec.h        codec GSM-lite
 Source/Dsp/Telephone.h    moteur : rééchantillonnage 8 kHz, les 9 modes, bypass sans clic
 Source/PixelArt.h         police 5x7 et emojis animés de l'écran
 Source/PluginEditor.*     interface du téléphone BOBAL (écran LCD pixel + 12 touches)

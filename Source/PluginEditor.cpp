@@ -41,7 +41,7 @@ juce::Path scrollKeyPath()
 }
 
 const char* const kLcdNames[10] = { "", "1 CALL", "2 STUTTER", "3 AM RADIO", "4 LOW BATT",
-                                    "5 WALKIE", "6 SCRAMBLE", "7 BAD LINE", "8 CORRUPT", "9 ROBOT" };
+                                    "5 WALKIE", "6 SCRAMBLE", "7 BAD LINE", "8 CORRUPT", "9 SATELLITE" };
 
 const juce::Colour kInk { 0xff1b2a1d };
 const juce::Colour kLcdTop { 0xff86b98d }, kLcdMain { 0xff9bc9a0 }, kLcdOff { 0xff6d8571 };

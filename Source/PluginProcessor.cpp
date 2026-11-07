@@ -4,7 +4,7 @@
 juce::StringArray N3310Processor::modeChoices()
 {
     return { "0 BYPASS", "1 CALL", "2 STUTTER", "3 AM RADIO", "4 LOW BATT",
-             "5 WALKIE", "6 SCRAMBLE", "7 BAD LINE", "8 CORRUPT", "9 ROBOT" };
+             "5 WALKIE", "6 SCRAMBLE", "7 BAD LINE", "8 CORRUPT", "9 SATELLITE" };
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout N3310Processor::createLayout()

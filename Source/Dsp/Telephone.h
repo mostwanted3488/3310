@@ -5,7 +5,7 @@
 //
 // Mode 1 is the base effect: a 90s GSM call on an old mobile phone (the BOBAL 3310). Modes 2-9 stay in
 // the same digital / radio universe (stutter, AM radio, dying battery, walkie
-// talkie, voice scrambler, bad line, bit corruption, vocoder robot).
+// talkie, voice scrambler, bad line, bit corruption, long-distance satellite echo).
 //
 // All modes report exactly the same latency (one 20 ms GSM frame + resampler),
 // so switching modes or bypassing never shifts timing against the DAW.
@@ -27,6 +27,7 @@ public:
         delay_.allocate (kFrame);
         stutterBuf_.assign (8000, 0.0f);
         wobbleBuf_.assign (128, 0.0f);
+        satBuf_.assign (kSatLen, 0.0f);
         setMode (1);
     }
 
@@ -54,7 +55,7 @@ public:
             case 6: y = delay_.process (scrambleMode (v)); break;
             case 7: y = badLineMode (v); break;
             case 8: y = delay_.process (corruptMode (v)); break;
-            case 9: y = robotMode (v); break;
+            case 9: y = satelliteMode (v); break;
             default: break;
         }
         return softClip (y * trim_);
@@ -71,7 +72,7 @@ private:
     {
         rng_.seed (seed_ + (uint32_t) mode_ * 7919u);
         hp_.reset(); lp_.reset(); post_.reset(); hiss_.reset(); noiseBp_.reset();
-        agc_.reset(); delay_.reset(); gsm_.reset(); voc_.reset();
+        agc_.reset(); delay_.reset(); gsm_.reset();
         std::fill (frameIn_, frameIn_ + kFrame, 0.0f);
         std::fill (frameOut_, frameOut_ + kFrame, 0.0f);
         fi_ = 0;
@@ -85,6 +86,8 @@ private:
         fadePh_ = 0.0f; whPh_ = 0.0f; crack_ = 0.0f;
         sqEnv_ = 0.0f; gEnv_ = 0.0f; gOpen_ = false; gHold_ = 0; gGain_ = 0.0f;
         up16_.reset(); dn16_.reset(); carPh_ = 0.0f; lfoPh_ = 0.0f;
+        std::fill (satBuf_.begin(), satBuf_.end(), 0.0f);
+        satW_ = 0; satPh_ = 0.0f; satLp_.reset(); satHp_.reset();
         glHold_ = 0; glVal_ = 0.0f; sh_ = 0; shVal_ = 0.0f; tick_ = 0.0f; cEnv_ = 0.0f;
     }
 
@@ -138,8 +141,11 @@ private:
                 hissDb_ = -56.0f;
                 break;
             case 9:
-                hpF = 200.0f; lpF = 3600.0f; trim_ = dbToGain (0.0f);
-                hissDb_ = -64.0f;
+                hpF = 300.0f; lpF = 3400.0f; trim_ = dbToGain (7.6f);
+                agc_.set (fs, -30.0f, 2.2f, 4.0f, 140.0f, 3.0f); agcOn_ = true;
+                satLp_.lowpass (fs, 1900.0, 0.7071);  // every repeat is a bit darker...
+                satHp_.highpass (fs, 380.0, 0.7071);  // ...and thinner
+                hissDb_ = -66.0f;
                 break;
             default: break;
         }
@@ -190,6 +196,7 @@ private:
         {
             case 1:
             case 2:
+            case 9:
                 gsm_.encode (frameIn_, cfg, params_);
                 gsm_.decode (params_, frameOut_);
                 matchLevel (false);
@@ -230,11 +237,6 @@ private:
                 matchLevel (bad_);
                 break;
             }
-
-            case 9:
-                voc_.process (frameIn_, frameOut_, 1.3f, 105.0f, rng_);
-                matchLevel (false);
-                break;
 
             default: break;
         }
@@ -449,8 +451,26 @@ private:
         return addHiss (post_.process (y));
     }
 
-    // 9 - vocoder robot
-    float robotMode (float v) { return addHiss (framePush (v)); }
+    // 9 - satellite: the call goes through the codec, then comes back as a long-distance echo
+    // (about 330 ms, every repeat darker and thinner, with a slow wobble like a drifting link)
+    float satelliteMode (float v)
+    {
+        if (agcOn_) v = agc_.process (v);
+        const float y = framePush (v);
+
+        satPh_ += 0.22f * 6.2831853f / (float) kTelRate;
+        if (satPh_ > 6.2831853f) satPh_ -= 6.2831853f;
+        float rd = (float) satW_ - ((float) kSatDelay + 5.0f * std::sin (satPh_));
+        while (rd < 0.0f) rd += (float) kSatLen;
+        const int i0 = (int) rd;
+        const float fr = rd - (float) i0;
+        const float a = satBuf_[(size_t) i0], b = satBuf_[(size_t) ((i0 + 1) % kSatLen)];
+        const float echo = satHp_.process (satLp_.process (a + (b - a) * fr));
+
+        satBuf_[(size_t) satW_] = flushDenormal (y + 0.58f * echo);
+        if (++satW_ >= kSatLen) satW_ = 0;
+        return addHiss (y + 0.8f * echo);
+    }
 
     // ------------------------------------------------------------------ state
     int mode_ = 1;
@@ -464,7 +484,6 @@ private:
 
     Delay delay_;
     GsmLite gsm_;
-    Vocoder voc_;
     GsmParams params_, lastRx_;
     float frameIn_[kFrame] = { 0 }, frameOut_[kFrame] = { 0 };
     int fi_ = 0;
@@ -472,6 +491,13 @@ private:
     bool bad_ = false;
     int consecutive_ = 0;
     float burst_ = 0.0f;
+
+    // satellite
+    static constexpr int kSatDelay = 2640, kSatLen = 2700; // 330 ms at 8 kHz
+    std::vector<float> satBuf_;
+    int satW_ = 0;
+    float satPh_ = 0.0f;
+    Biquad satLp_, satHp_;
 
     // stutter
     std::vector<float> stutterBuf_;
