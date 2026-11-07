@@ -90,6 +90,19 @@ struct Biquad
         a2 = (float) ((1.0 - al) / a0);
     }
 
+    void highshelf (double fs, double fc, double gainDb, double q)
+    {
+        const double A = std::pow (10.0, gainDb / 40.0);
+        const double w = 2.0 * 3.14159265358979323846 * fc / fs, c = std::cos (w), s = std::sin (w), al = s / (2.0 * q);
+        const double sq = 2.0 * std::sqrt (A) * al;
+        const double a0 = (A + 1.0) - (A - 1.0) * c + sq;
+        b0 = (float) ((A * ((A + 1.0) + (A - 1.0) * c + sq)) / a0);
+        b1 = (float) ((-2.0 * A * ((A - 1.0) + (A + 1.0) * c)) / a0);
+        b2 = (float) ((A * ((A + 1.0) + (A - 1.0) * c - sq)) / a0);
+        a1 = (float) ((2.0 * ((A - 1.0) - (A + 1.0) * c)) / a0);
+        a2 = (float) (((A + 1.0) - (A - 1.0) * c - sq) / a0);
+    }
+
     void bandpass (double fs, double fc, double q) // constant 0 dB peak gain
     {
         fc = std::min (fc, fs * 0.45);

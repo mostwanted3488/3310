@@ -609,6 +609,18 @@ public:
         modeGain_ = 1.0f;
         activeMode_ = requestedMode_;
         wet_.setMode (activeMode_);
+
+        // Loudness follower (K-weighted-like): keeps the telephone sound as loud as the input,
+        // whatever the material (the 300-3400 Hz band loses far more level on bass-heavy music than on a voice).
+        for (int i = 0; i < 2; ++i) { kIn_[i].reset(); kWet_[i].reset(); }
+        kIn_[0].highpass (fs, 38.0, 0.5);       kWet_[0] = kIn_[0];
+        kIn_[1].highshelf (fs, 1682.0, 4.0, 0.707); kWet_[1] = kIn_[1];
+        inPow_ = wetPow_ = peak_ = 0.0f;
+        autoGain_ = autoTarget_ = 1.0f;
+        coefPow_ = 1.0f - std::exp (-1.0f / (float) (0.25 * fs));
+        coefPeak_ = 1.0f - std::exp (-1.0f / (float) (0.2 * fs));
+        coefDown_ = 1.0f - std::exp (-1.0f / (float) (0.04 * fs));
+        coefUp_ = 1.0f - std::exp (-1.0f / (float) (0.5 * fs));
     }
 
     int latencySamples() const { return latency_; }
@@ -636,7 +648,24 @@ public:
         {
             const float l = L[i];
             const float r = R ? R[i] : l;
-            const float wet = wet_.process (R ? 0.5f * (l + r) : l);
+            const float mono = R ? 0.5f * (l + r) : l;
+            const float wetRaw = wet_.process (mono);
+
+            // loudness match: wet level follows the input level (slow, so no pumping)
+            const float ki = kIn_[1].process (kIn_[0].process (mono));
+            const float kw = kWet_[1].process (kWet_[0].process (wetRaw));
+            inPow_ += (ki * ki - inPow_) * coefPow_;
+            wetPow_ += (kw * kw - wetPow_) * coefPow_;
+            const float aw = std::fabs (wetRaw);
+            peak_ = aw > peak_ ? aw : peak_ + (aw - peak_) * coefPeak_;
+            if (inPow_ > 1.0e-7f && wetPow_ > 1.0e-9f)
+            {
+                float t = clampf (std::sqrt (inPow_ / wetPow_), 0.5f, 8.0f);
+                t = std::max (0.25f, std::min (t, 1.5f / std::max (peak_, 1.0e-3f)));
+                autoTarget_ = t;
+            }
+            autoGain_ += (autoTarget_ - autoGain_) * (autoTarget_ < autoGain_ ? coefDown_ : coefUp_);
+            const float wet = wetRaw * autoGain_;
 
             if (requestedMode_ != activeMode_)
             {
@@ -673,6 +702,9 @@ private:
     float wetCoef_ = 0.002f, wetAmt_ = 1.0f, modeGain_ = 1.0f, mix_ = 1.0f, mixTarget_ = 1.0f;
     bool bypass_ = false;
     int activeMode_ = 1, requestedMode_ = 1;
+    Biquad kIn_[2], kWet_[2];
+    float inPow_ = 0, wetPow_ = 0, peak_ = 0, autoGain_ = 1, autoTarget_ = 1;
+    float coefPow_ = 0.0001f, coefPeak_ = 0.0001f, coefDown_ = 0.001f, coefUp_ = 0.0001f;
 };
 
 } // namespace n3310
