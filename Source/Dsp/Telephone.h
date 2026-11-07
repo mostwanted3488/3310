@@ -595,6 +595,9 @@ private:
 class Engine
 {
 public:
+    // the telephone sound is kept a little louder than the input (+2.5 dB), it reads as quieter otherwise
+    static constexpr float kLoudBoost = 1.33f;
+
     void prepare (double fs, uint32_t seed = 3310u)
     {
         fs_ = fs;
@@ -675,8 +678,8 @@ public:
             peak_ = aw > peak_ ? aw : peak_ + (aw - peak_) * coefPeak_;
             if (inPow_ > 1.0e-7f && wetPow_ > 1.0e-9f)
             {
-                float t = clampf (std::sqrt (inPow_ / wetPow_), 0.5f, 8.0f);
-                t = std::max (0.25f, std::min (t, 1.5f / std::max (peak_, 1.0e-3f)));
+                float t = clampf (std::sqrt (inPow_ / wetPow_) * kLoudBoost, 0.5f, 12.0f);
+                t = std::max (0.25f, std::min (t, 2.2f / std::max (peak_, 1.0e-3f)));
                 autoTarget_ = t;
             }
             autoGain_ += (autoTarget_ - autoGain_) * (autoTarget_ < autoGain_ ? coefDown_ : coefUp_);
