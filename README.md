@@ -54,6 +54,7 @@ JUCE 8.0.15 est téléchargé automatiquement. Le VST3 se trouve ensuite dans `b
 ### Installer
 
 - **Windows** : copier le dossier `3310.vst3` dans `C:\Program Files\Common Files\VST3`, puis rescanner les plugins dans FL Studio.
+- **macOS, build local (sans GitHub)** : une fois `xcode-select --install` et `brew install cmake` faits, lancer `./build_mac.sh` dans le dossier du projet. Il compile le VST3 et l'AU (Apple Silicon + Intel), les installe dans `~/Library/Audio/Plug-Ins` et les signe en « ad hoc ». Ensuite, rescan dans FL Studio.
 - **macOS** : copier `3310.vst3` dans `/Library/Audio/Plug-Ins/VST3` (et `3310.component` dans `/Library/Audio/Plug-Ins/Components`). Les builds ne sont pas signés : si macOS bloque le plugin, lancer `xattr -cr /Library/Audio/Plug-Ins/VST3/3310.vst3`.
 
 ## Tests

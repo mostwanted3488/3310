@@ -2,8 +2,15 @@ name: Build 3310
 
 on:
   push:
+    paths-ignore: ['preview/**', 'web/**', 'README.md', '*.sh']
   pull_request:
+    paths-ignore: ['preview/**', 'web/**', 'README.md', '*.sh']
   workflow_dispatch:
+
+# a new push cancels the build still running for the same branch (saves Actions minutes)
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   dsp-test:
